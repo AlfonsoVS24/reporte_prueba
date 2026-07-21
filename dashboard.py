@@ -1,18 +1,27 @@
 import streamlit as st
+
 from data import generar_datos
 from tabla import mostrar_tabla
+from comparacion import mostrar_comparacion
+
 
 def mostrar_dashboard():
 
+    # ==========================
     # Título
+    # ==========================
+
     st.title("📊 Dashboard Operativo")
 
     st.markdown("---")
 
     st.subheader("Selecciona una cartera")
 
+    # ==========================
     # Botones
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # ==========================
+
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
 
     with col1:
         if st.button("🏦\n\nBBVA1", use_container_width=True):
@@ -34,20 +43,49 @@ def mostrar_dashboard():
         if st.button("🏢\n\nBBVA5", use_container_width=True):
             st.session_state["cartera"] = "BBVA5"
 
+    with col6:
+        if st.button("📊\n\nComparación", use_container_width=True):
+            st.session_state["cartera"] = "Comparación"
+
     st.markdown("---")
+
+    # ==========================
+    # Validación
+    # ==========================
 
     if "cartera" not in st.session_state:
         st.info("Selecciona una cartera para comenzar.")
         return
 
-    st.success(f"Cartera seleccionada: **{st.session_state['cartera']}**")
+    # ==========================
+    # Vista comparación
+    # ==========================
 
-    # A partir de aquí ya sabemos que hay una cartera seleccionada
+    if st.session_state["cartera"] == "Comparación":
+
+        st.success("📊 Comparación entre carteras")
+
+        mostrar_comparacion()
+
+        return
+
+    # ==========================
+    # Dashboard de cartera
+    # ==========================
+
+    st.success(
+        f"Cartera seleccionada: **{st.session_state['cartera']}**"
+    )
+
     datos = generar_datos(st.session_state["cartera"])
 
     retardos = (datos["Entrada"] > 555).sum()
     comida = (datos["Comida"] > 60).sum()
     baño = (datos["Baño"] > 30).sum()
+
+    # ==========================
+    # KPIs
+    # ==========================
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -58,21 +96,59 @@ def mostrar_dashboard():
 
     st.markdown("---")
 
-    st.subheader("🚨 Alertas")
+    # ==========================
+    # Tabla + Alertas
+    # ==========================
 
-    for _, fila in datos.iterrows():
+    col_tabla, col_alertas = st.columns([4, 1])
 
-        if fila["Entrada"] > 555:
+    with col_tabla:
 
-            hora = f"{fila['Entrada']//60:02d}:{fila['Entrada']%60:02d}"
+        mostrar_tabla(datos)
 
-            st.error(f"{fila['Asesor']} llegó a las {hora}")
+    with col_alertas:
 
-        if fila["Comida"] > 60:
+        st.subheader("🚨 Alertas")
 
-            st.warning(f"{fila['Asesor']} excedió comida ({fila['Comida']} min)")
+        contenedor = st.container(border=True)
 
-        if fila["Baño"] > 30:
+        with contenedor:
 
-            st.warning(f"{fila['Asesor']} excedió baño ({fila['Baño']} min)")
-    mostrar_tabla(datos)
+            hay_alertas = False
+
+            for _, fila in datos.iterrows():
+
+                if fila["Entrada"] > 555:
+
+                    hora = f"{fila['Entrada']//60:02d}:{fila['Entrada']%60:02d}"
+
+                    st.markdown(
+                        f"🔴 **{fila['Asesor']}**<br>"
+                        f"<span style='font-size:12px'>Retardo ({hora})</span>",
+                        unsafe_allow_html=True,
+                    )
+
+                    hay_alertas = True
+
+                if fila["Comida"] > 60:
+
+                    st.markdown(
+                        f"🟡 **{fila['Asesor']}**<br>"
+                        f"<span style='font-size:12px'>Comida ({fila['Comida']} min)</span>",
+                        unsafe_allow_html=True,
+                    )
+
+                    hay_alertas = True
+
+                if fila["Baño"] > 30:
+
+                    st.markdown(
+                        f"🟠 **{fila['Asesor']}**<br>"
+                        f"<span style='font-size:12px'>Baño ({fila['Baño']} min)</span>",
+                        unsafe_allow_html=True,
+                    )
+
+                    hay_alertas = True
+
+            if not hay_alertas:
+                st.success("✅ Sin alertas")
